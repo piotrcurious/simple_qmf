@@ -15,12 +15,10 @@ int main() {
     reset_cycle_count();
     uint32_t total_iterations = 0;
 
-    // We want loop() to run frequently to pick up micros() changes.
-    // Simulator runs as fast as possible.
     while (std::cin.peek() != EOF && total_iterations < 2000000) {
         add_cycles(10);
 
-        if (vector_0 && (get_cycle_count() % 256 < 10)) {
+        if (vector_0 && (get_total_cycles() % 256 < 10)) {
              vector_0();
         }
 

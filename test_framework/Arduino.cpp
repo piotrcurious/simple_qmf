@@ -9,21 +9,14 @@ int analogResolution = 10;
 uint64_t total_cycles = 0;
 uint64_t processing_cycles = 0;
 
-uint8_t TCCR0A = 0;
-uint8_t TCCR0B = 0;
-uint8_t TIMSK0 = 0;
-uint8_t TCNT0 = 0;
-
-uint8_t TCCR1A = 0;
-uint8_t TCCR1B = 0;
-uint8_t TIMSK1 = 0;
-uint16_t TCNT1 = 0;
-uint16_t ICR1 = 0;
-uint16_t OCR1A = 0;
-uint16_t OCR1B = 0;
+uint8_t TCCR0A = 0, TCCR0B = 0, TIMSK0 = 0, TCNT0 = 0;
+uint8_t TCCR1A = 0, TCCR1B = 0, TIMSK1 = 0;
+uint16_t TCNT1 = 0, ICR1 = 0, OCR1A = 0, OCR1B = 0;
+uint8_t DDRB = 0;
 
 void reset_cycle_count() { total_cycles = 0; processing_cycles = 0; }
 uint64_t get_cycle_count() { return processing_cycles; }
+uint64_t get_total_cycles() { return total_cycles; }
 void add_cycles(uint32_t c) { total_cycles += c; processing_cycles += c; }
 
 void pinMode(uint8_t pin, uint8_t mode) { pinModes[pin] = mode; }
@@ -37,7 +30,7 @@ int analogRead(uint8_t pin) {
         if (std::cin >> val) return val;
         return 0;
     }
-    if (pin == A0) return 512;
+    if (pin == A0) return (analogResolution == 8) ? 128 : 512;
     return 0;
 }
 

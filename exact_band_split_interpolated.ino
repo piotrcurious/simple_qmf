@@ -1,4 +1,5 @@
 
+// exact_band_split_interpolated.ino - Fixed-point interpolation
 #define N 4
 #define R 10
 const int16_t h_set[R][N] PROGMEM = {
@@ -13,31 +14,44 @@ const int16_t g_set[R][N] PROGMEM = {
  {-533, -11674, 23101, -11516}, {650, -13106, 21670, -10085}, {1968, -14742, 20042, -8456},
  {3450, -16641, 18176, -6651}
 };
+
 const uint8_t LP_PIN = 9, HP_PIN = 10;
 #define B 256
 #define MASK (B - 1)
 int16_t x[B];
 uint8_t i = 0;
+uint8_t prev_knob = 255;
+
 void setup() {
   pinMode(LP_PIN, OUTPUT);
   pinMode(HP_PIN, OUTPUT);
   analogReadResolution(8);
 }
+
 void loop() {
-  uint16_t freq = map(analogRead(A0), 0, 255, 80, 2000);
-  uint8_t r1 = (freq < 100) ? 0 : (freq > 1000) ? R - 1 : (freq - 100) / 100;
-  uint8_t r2 = (r1 < R - 1) ? r1 + 1 : r1;
-  float t = (freq - (100.0 + r1 * 100.0)) / 100.0;
-  if (t < 0) t = 0; if (t > 1) t = 1;
+  uint8_t knob = analogRead(A0);
+  static int16_t h_curr[N], g_curr[N];
+  if (knob != prev_knob) {
+    prev_knob = knob;
+    uint16_t freq = map(knob, 0, 255, 80, 2000);
+    uint8_t r1 = (freq < 100) ? 0 : (freq > 1000) ? R - 1 : (freq - 100) / 100;
+    uint8_t r2 = (r1 < R - 1) ? r1 + 1 : r1;
+    // Linear interpolation in fixed point (using 256 as factor)
+    uint16_t t = (freq - (100 + r1 * 100)) * 256 / 100;
+    if (t > 256) t = 256;
+    for (uint8_t j = 0; j < N; j++) {
+      h_curr[j] = (int16_t)(((256L - t) * (int16_t)pgm_read_word(&h_set[r1][j]) + t * (int16_t)pgm_read_word(&h_set[r2][j])) >> 8);
+      g_curr[j] = (int16_t)(((256L - t) * (int16_t)pgm_read_word(&g_set[r1][j]) + t * (int16_t)pgm_read_word(&g_set[r2][j])) >> 8);
+    }
+  }
+
   x[i] = analogRead(A1);
   int32_t y1 = 0, y2 = 0;
   for (uint8_t j = 0; j < N; j++) {
-    int32_t c_h = (int32_t)((1.0 - t) * (int16_t)pgm_read_word(&h_set[r1][j]) + t * (int16_t)pgm_read_word(&h_set[r2][j]));
-    int32_t c_g = (int32_t)((1.0 - t) * (int16_t)pgm_read_word(&g_set[r1][j]) + t * (int16_t)pgm_read_word(&g_set[r2][j]));
-    y1 += c_h * (x[(i - j) & MASK] - 128);
-    y2 += c_g * (x[(i - j) & MASK] - 128);
+    y1 += (int32_t)h_curr[j] * (x[(i - j) & MASK] - 128);
+    y2 += (int32_t)g_curr[j] * (x[(i - j) & MASK] - 128);
   }
-  analogWrite(LP_PIN, ((y1 + 16384L) >> 15) + 128);
-  analogWrite(HP_PIN, ((y2 + 16384L) >> 15) + 128);
+  analogWrite(LP_PIN, constrain(((y1 + 16384L) >> 15) + 128, 0, 255));
+  analogWrite(HP_PIN, constrain(((y2 + 16384L) >> 15) + 128, 0, 255));
   i = (i + 1) & MASK;
 }

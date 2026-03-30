@@ -27,6 +27,7 @@
 
 void reset_cycle_count();
 uint64_t get_cycle_count();
+uint64_t get_total_cycles();
 void add_cycles(uint32_t c);
 
 void pinMode(uint8_t pin, uint8_t mode);
@@ -61,6 +62,7 @@ extern uint16_t TCNT1;
 extern uint16_t ICR1;
 extern uint16_t OCR1A;
 extern uint16_t OCR1B;
+extern uint8_t DDRB;
 
 #define CS00 0
 #define TOIE0 0

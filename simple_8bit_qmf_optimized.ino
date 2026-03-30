@@ -14,6 +14,11 @@ void setup() {
   analogReadResolution(8);
 }
 void loop() {
+  uint32_t now = micros();
+  static uint32_t last = 0;
+  if (now - last < 500) return;
+  last = now;
+
   x[i] = analogRead(A1);
   arduino_y1 = 0; arduino_y2 = 0;
   for (uint8_t j = 0; j < N; j++) {
@@ -21,7 +26,7 @@ void loop() {
     arduino_y1 += (int32_t)(int16_t)pgm_read_word(&h[j]) * input;
     arduino_y2 += (int32_t)(int16_t)pgm_read_word(&g[j]) * input;
   }
-  analogWrite(LP_PIN, ((arduino_y1 + 16384L) >> 15) + 128);
-  analogWrite(HP_PIN, ((arduino_y2 + 16384L) >> 15) + 128);
+  analogWrite(LP_PIN, constrain(((arduino_y1 + 16384L) >> 15) + 128, 0, 255));
+  analogWrite(HP_PIN, constrain(((arduino_y2 + 16384L) >> 15) + 128, 0, 255));
   i = (i + 1) & MASK;
 }
