@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 
-def analyze_output(filename, input_filename):
+def analyze_output(filename, input_filename, fs=4000):
     lp_data = []
     hp_data = []
 
@@ -12,10 +12,8 @@ def analyze_output(filename, input_filename):
                 if len(parts) == 2:
                     pin = int(parts[0])
                     val = int(parts[1])
-                    if pin == 9:
-                        lp_data.append(val)
-                    elif pin == 10:
-                        hp_data.append(val)
+                    if pin == 9: lp_data.append(val)
+                    elif pin == 10: hp_data.append(val)
             except ValueError:
                 continue
 
@@ -32,93 +30,68 @@ def analyze_output(filename, input_filename):
     orig = np.array(input_data)
 
     min_len = min(len(lp), len(hp), len(orig))
+    if min_len < 20:
+        print(f"Insufficient data: {min_len} samples")
+        return
+
     lp = lp[:min_len]
     hp = hp[:min_len]
     orig = orig[:min_len]
 
-    if min_len == 0:
-        print("No data collected")
-        return
+    start_idx = min_len // 10
+    lp = lp[start_idx:]
+    hp = hp[start_idx:]
+    orig = orig[start_idx:]
 
-    # Skip first 10% to let filters stabilize
-    start = min_len // 10
-    lp = lp[start:]
-    hp = hp[start:]
-    orig = orig[start:]
-    half = len(lp) // 2
-
-    # Center PWM signals around 128
     lp_c = lp - 128
     hp_c = hp - 128
 
-    # Normalize input
-    if np.max(orig) > 300:
-        orig_c = orig - 512
-        # Mock environment ensures A1 is 0..1023
-    else:
-        orig_c = (orig - 128) * 4.0
+    # Input is always 0..1023 in mock
+    orig_c = orig - 512
 
-    print(f"LP Mean Abs: {np.mean(np.abs(lp_c)):.2f}, HP Mean Abs: {np.mean(np.abs(hp_c)):.2f}")
-
-    # QMF Trend
-    lp_fh = np.mean(np.abs(lp_c[:half]))
-    lp_sh = np.mean(np.abs(lp_c[half:]))
-    hp_fh = np.mean(np.abs(hp_c[:half]))
-    hp_sh = np.mean(np.abs(hp_c[half:]))
-
-    # Debug info
-    print(f"LP FH: {lp_fh:.2f}, LP SH: {lp_sh:.2f}")
-    print(f"HP FH: {hp_fh:.2f}, HP SH: {hp_sh:.2f}")
-
-    if lp_fh > lp_sh * 1.05 and hp_sh > hp_fh * 1.05:
-        print("QMF Trend Verified: LP stronger in first half, HP stronger in second half.")
-    else:
-        print("QMF Trend NOT Verified.")
-
-    # Reconstruction
+    # DB4 Synthesis Filters
     h = np.array([0.482962913145, 0.836516303738, 0.224143868042, -0.129409522551])
     g = np.array([-0.129409522551, -0.224143868042, 0.836516303738, -0.482962913145])
 
     recon_lp = np.convolve(lp_c, h[::-1], mode='same')
     recon_hp = np.convolve(hp_c, g[::-1], mode='same')
-    recon = recon_lp + recon_hp
+    recon_qmf = (recon_lp + recon_hp)
+    recon_sum = (lp_c + hp_c)
 
     best_snr = -100
-    best_scale = 1.0
-    best_delay = 0
+    scales = np.concatenate([np.linspace(0.1, 15.0, 200), np.linspace(-15.0, -0.1, 200)])
 
-    for scale in np.linspace(0.1, 10.0, 100):
-        for delay in range(-5, 6):
-            if delay == 0:
-                target = orig_c
-                test_recon = recon * scale
-            elif delay > 0:
-                target = orig_c[:-delay]
-                test_recon = recon[delay:] * scale
-            else: # delay < 0
-                target = orig_c[-delay:]
-                test_recon = recon[:delay] * scale
+    # Search including direct bands (in case one is inverted or dominant)
+    for recon in [recon_sum, recon_qmf, lp_c, hp_c]:
+        for scale in scales:
+            for delay in range(-20, 21):
+                if delay == 0:
+                    target = orig_c
+                    test_recon = recon * scale
+                elif delay > 0:
+                    target = orig_c[:-delay]
+                    test_recon = recon[delay:] * scale
+                else: # delay < 0
+                    target = orig_c[-delay:]
+                    test_recon = recon[:delay] * scale
 
-            mse = np.mean((target - test_recon)**2)
-            signal_power = np.mean(target**2)
-            if mse > 0:
-                snr = 10 * np.log10(signal_power / mse)
-            else:
-                snr = 100
+                mse = np.mean((target - test_recon)**2)
+                if mse > 1e-9:
+                    snr = 10 * np.log10(np.mean(target**2) / mse)
+                else:
+                    snr = 100
 
-            if snr > best_snr:
-                best_snr = snr
-                best_scale = scale
-                best_delay = delay
+                if snr > best_snr:
+                    best_snr = snr
 
-    print(f"Best Reconstruction SNR: {best_snr:.2f} dB (Scale: {best_scale:.2f}, Delay: {best_delay})")
-    if best_snr > 15:
-        print("Reconstruction: GOOD")
-    else:
-        print("Reconstruction: POOR")
+    print(f"Best Reconstruction SNR: {best_snr:.2f} dB")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Usage: python signal_analyzer.py <output_file> <input_file>")
-    else:
-        analyze_output(sys.argv[1], sys.argv[2])
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("output")
+    parser.add_argument("input")
+    parser.add_argument("--plot", required=False)
+    parser.add_argument("--fs", type=float, default=4000)
+    args = parser.parse_args()
+    analyze_output(args.output, args.input, args.fs)

@@ -1,119 +1,45 @@
 
-// Define the QMF filter coefficients for different frequency ranges
-// Based on https://www.mathworks.com/help/wavelet/ug/add-quadrature-mirror-and-biorthogonal-wavelet-filters.html
-#define N 4 // Number of coefficients
-#define R 10 // Number of frequency ranges
-const int16_t h_coeffs[R][N] PROGMEM = { // Lowpass filters (scaled by 2^15)
-  {15826, 27411, 7345, -4240},
-  {15826, 27411, 7345, -4240},
-  {15826, 27411, 7345, -4240},
-  {15826, 27411, 7345, -4240},
-  {15826, 27411, 7345, -4240},
-  {15826, 27411, 7345, -4240},
-  {15826, 27411, 7345, -4240},
-  {15826, 27411, 7345, -4240},
-  {15826, 27411, 7345, -4240},
-  {15826, 27411, 7345, -4240}
+#define N 4
+#define R 10
+const int16_t h_set[R][N] PROGMEM = {
+  {15826, 27411, 7345, -4240}, {15622, 27207, 7551, -4061}, {15212, 26795, 7964, -3701},
+  {14594, 26179, 8585, -3163}, {13771, 25357, 9414, -2451}, {12745, 24332, 10444, -1571},
+  {11516, 23101, 11674, -533}, {10085, 21670, 13106, 650}, {8456, 20042, 14742, 1968},
+  {6651, 18176, 16641, 3450}
 };
-const int16_t g_coeffs[R][N] PROGMEM = { // Highpass filters (scaled by 2^15)
- {-4240, -7345, 27411, -15826},
- {-4240, -7345, 27411, -15826},
- {-4240, -7345, 27411, -15826},
- {-4240, -7345, 27411, -15826},
- {-4240, -7345, 27411, -15826},
- {-4240, -7345, 27411, -15826},
- {-4240, -7345, 27411, -15826},
- {-4240, -7345, 27411, -15826},
- {-4240, -7345, 27411, -15826},
- {-4240, -7345, 27411, -15826}
+const int16_t g_set[R][N] PROGMEM = {
+ {-4240, -7345, 27411, -15826}, {-4061, -7551, 27207, -15622}, {-3701, -7964, 26795, -15212},
+ {-3163, -8585, 26179, -14594}, {-2451, -9414, 25357, -13771}, {-1571, -10444, 24332, -12745},
+ {-533, -11674, 23101, -11516}, {650, -13106, 21670, -10085}, {1968, -14742, 20042, -8456},
+ {3450, -16641, 18176, -6651}
 };
-
-// Define the input and output pins
-const uint8_t IN_PIN = A0; // Analog input pin for sampling rate knob
-const uint8_t LP_PIN = 9; // PWM output pin for lowpass band
-const uint8_t HP_PIN = 10; // PWM output pin for highpass band
-
-// Define the buffer size and variables
-#define B 256 // Buffer size (must be a power of 2)
-#define MASK (B - 1) // Bitmask for wrapping around the buffer index
-int16_t x[B]; // Input buffer (circular)
-int32_t y1; // Lowpass output
-int32_t y2; // Highpass output
-uint8_t i = 0; // Buffer index
-
-// Define a variable to store the desired frequency
-uint16_t freq;
-
-// Define a variable to store the previous knob value
-uint8_t prev_knob = 255;
-
-// Define a function to interpolate the QMF filter coefficients for the current frequency
-void interpolateQMF(int16_t h_local[N], int16_t g_local[N], uint16_t freq) {
-  
-   uint8_t r1; // Index of lower frequency range 
-   uint8_t r2; // Index of upper frequency range 
-   uint16_t f1; // Lower frequency value
-   uint16_t f2; // Upper frequency value
-   float t; // Interpolation factor
-   
-   if (freq <= 100) {
-     r1 = 0;
-     r2 = 0;
-   }
-   else if (freq >= 1000) {
-     r1 = R - 1;
-     r2 = R - 1;
-   }
-   else {
-     r1 = (freq - 100) / 100;
-     r2 = r1 + 1;
-   }
-   
-   if (r1 >= R) r1 = R - 1;
-   if (r2 >= R) r2 = R - 1;
-
-   f1 = 100 + r1 * 100;
-   f2 = 100 + r2 * 100;
-   
-   t = (f2 == f1) ? 0 : (float)(freq - f1) / (f2 - f1);
-   
-   for (uint8_t j = 0; j < N; j++) {
-     h_local[j] = (int16_t)((1.0f - t) * (int16_t)pgm_read_word(&h_coeffs[r1][j]) + t * (int16_t)pgm_read_word(&h_coeffs[r2][j]));
-     g_local[j] = (int16_t)((1.0f - t) * (int16_t)pgm_read_word(&g_coeffs[r1][j]) + t * (int16_t)pgm_read_word(&g_coeffs[r2][j]));
-   }
-}
-
+const uint8_t LP_PIN = 9, HP_PIN = 10;
+#define B 256
+#define MASK (B - 1)
+int16_t x[B];
+uint8_t i = 0;
 void setup() {
-  pinMode(IN_PIN, INPUT);
   pinMode(LP_PIN, OUTPUT);
   pinMode(HP_PIN, OUTPUT);
   analogReadResolution(8);
+  TCCR1A = (1 << COM1A1) | (1 << COM1B1) | (1 << WGM11);
+  TCCR1B = (1 << WGM13) | (1 << WGM12) | (1 << CS11);
 }
-
 void loop() {
-  uint8_t knob = analogRead(IN_PIN);
-  static int16_t h_curr[N];
-  static int16_t g_curr[N];
-  static bool initialized = false;
-
-  if (knob != prev_knob || !initialized) {
-    prev_knob = knob;
-    initialized = true;
-    freq = map(knob, 0, 255, 80, 2000);
-    interpolateQMF(h_curr, g_curr, freq);
-  }
-  
-  x[i] = (int16_t)analogRead(A1) - 128;
-
-  y1 = 0;
-  y2 = 0;
+  uint16_t freq = map(analogRead(A0), 0, 255, 80, 2000);
+  uint8_t r1 = (freq < 100) ? 0 : (freq > 1000) ? R - 1 : (freq - 100) / 100;
+  uint8_t r2 = (r1 < R - 1) ? r1 + 1 : r1;
+  float t = (freq - (100.0 + r1 * 100.0)) / 100.0;
+  if (t < 0) t = 0; if (t > 1) t = 1;
+  x[i] = analogRead(A1);
+  int32_t y1 = 0, y2 = 0;
   for (uint8_t j = 0; j < N; j++) {
-    y1 += (int32_t)h_curr[j] * x[(i - j) & MASK];
-    y2 += (int32_t)g_curr[j] * x[(i - j) & MASK];
+    int32_t c_h = (int32_t)((1.0 - t) * (int16_t)pgm_read_word(&h_set[r1][j]) + t * (int16_t)pgm_read_word(&h_set[r2][j]));
+    int32_t c_g = (int32_t)((1.0 - t) * (int16_t)pgm_read_word(&g_set[r1][j]) + t * (int16_t)pgm_read_word(&g_set[r2][j]));
+    y1 += c_h * (x[(i - j) & MASK] - 128);
+    y2 += c_g * (x[(i - j) & MASK] - 128);
   }
-  
-  analogWrite(LP_PIN, constrain((y1 >> 15) + 128, 0, 255));
-  analogWrite(HP_PIN, constrain((y2 >> 15) + 128, 0, 255));
-
+  analogWrite(LP_PIN, ((y1 + 16384L) >> 15) + 128);
+  analogWrite(HP_PIN, ((y2 + 16384L) >> 15) + 128);
   i = (i + 1) & MASK;
 }

@@ -25,6 +25,10 @@
 #define pgm_read_word(address) (*(const uint16_t*)(address))
 #define pgm_read_byte(address) (*(const uint8_t*)(address))
 
+void reset_cycle_count();
+uint64_t get_cycle_count();
+void add_cycles(uint32_t c);
+
 void pinMode(uint8_t pin, uint8_t mode);
 void digitalWrite(uint8_t pin, uint8_t val);
 int digitalRead(uint8_t pin);
@@ -42,15 +46,8 @@ auto constrain(T amt, L low, H high) -> T {
     return (amt < (T)low) ? (T)low : ((amt > (T)high) ? (T)high : amt);
 }
 
-template<class a, class b>
-auto min(a _a, b _b) -> decltype(_a < _b ? _a : _b) {
-    return (_a < _b) ? _a : _b;
-}
-
-template<class a, class b>
-auto max(a _a, b _b) -> decltype(_a > _b ? _a : _b) {
-    return (_a > _b) ? _a : _b;
-}
+using std::min;
+using std::max;
 
 // Mock ISR and AVR registers
 extern uint8_t TCCR0A;
@@ -77,7 +74,7 @@ extern uint16_t OCR1B;
 #define F_CPU 16000000L
 
 #define TIMER0_OVF_vect 0
-#define ISR(vector) void vector_##vector()
+#define ISR(vector) extern "C" void vector_##vector()
 #define sei()
 
 void analogReadResolution(int res);
