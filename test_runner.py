@@ -34,52 +34,53 @@ def test_file(ino_file):
         if os.path.exists(cpp_file): os.remove(cpp_file)
         return None
 
-    # Detect if 8-bit or 10-bit
     with open(ino_file, 'r') as f:
         content = f.read()
         res = 8 if "analogReadResolution(8)" in content else 10
-        amp = 127 if res == 8 else 511
-        offset = 128 if res == 8 else 512
+        # Use high amplitude (80% of full scale) to test clipping
+        amp = 400 if res == 10 else 100
 
     test_configs = [
-        {"type": "sweep", "f_start": "10", "f_end": "2000", "fs": "4000", "duration": "1.0", "amplitude": str(amp), "offset": str(offset)}
+        {"type": "sweep", "f_start": "10", "f_end": "1000", "fs": "2000", "duration": "2.0", "amplitude": "400"}
     ]
 
     for cfg in test_configs:
         print(f"  Test: {cfg['type']} ({res}-bit)")
         cmd = ["python3", "test_framework/signal_generator.py", "--type", cfg["type"]]
         for k, v in cfg.items():
-            if k != "type" and k != "offset": cmd.extend([f"--{k}", v])
+            if k != "type": cmd.extend([f"--{k}", v])
 
-        # Generator doesn't take offset yet, let's fix it or handle it
         with open("input_signal.txt", "w") as f:
             subprocess.check_call(cmd, stdout=f)
 
-        # Adjust input offset if needed
+        # Generator always produces 10-bit (0-1023).
+        # If we want 8-bit input for Arduino, we scale down to 0-255.
         if res == 8:
              with open("input_signal.txt", "r") as fin:
                  lines = fin.readlines()
              with open("input_signal.txt", "w") as fout:
                  for l in lines:
-                     val = int(l.strip()) >> 2 # 10-bit to 8-bit
+                     val = int(float(l.strip()) / 4.0)
                      fout.write(f"{val}\n")
 
         with open("input_signal.txt", "r") as f_in, open("output_signal.txt", "w") as f_out:
+            # We must make sure test_bin reads at the correct cadence or just reads all.
+            # The current mock main.cpp reads as fast as possible but loop() has timing.
             proc = subprocess.Popen(["./test_bin"], stdin=f_in, stdout=f_out, stderr=subprocess.PIPE, text=True)
             try:
-                _, stderr = proc.communicate(timeout=15)
+                _, stderr = proc.communicate(timeout=20)
             except subprocess.TimeoutExpired:
                 proc.kill(); stderr = ""
 
             perf_match = re.search(r"AVG_CYCLES_PER_LOOP: (\d+)", stderr)
             avg_cycles = int(perf_match.group(1)) if perf_match else 0
 
-        # Run analyzer
         plot_name = ino_file.replace(".ino", "")
         try:
+            # fs matches sampling rate for analysis
             analysis_out = subprocess.check_output([
                 "python3", "test_framework/signal_analyzer.py",
-                "output_signal.txt", "input_signal.txt", "--plot", plot_name, "--fs", cfg.get("fs", "4000")
+                "output_signal.txt", "input_signal.txt", "--plot", plot_name, "--fs", cfg.get("fs", "2000")
             ], text=True)
 
             snr_match = re.search(r"Best Reconstruction SNR: ([\-\d\.]+) dB", analysis_out)

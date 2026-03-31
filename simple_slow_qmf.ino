@@ -1,14 +1,11 @@
+#include "coefficients.h"
 
-// simple_slow_qmf.ino - Floating-point logic
-#define N 4
-float h[N] = {0.482962913145, 0.836516303738, 0.224143868042, -0.129409522551};
-float g[N] = {-0.129409522551, -0.224143868042, 0.836516303738, -0.482962913145};
-
-#define LP_PIN 9
-#define HP_PIN 10
+// simple_slow_qmf.ino - Floating point implementation
+const uint8_t LP_PIN = 9, HP_PIN = 10;
 #define B 256
 int16_t x[B];
 uint8_t i = 0;
+uint32_t last_micros = 0;
 
 void setup() {
   pinMode(LP_PIN, OUTPUT);
@@ -17,21 +14,21 @@ void setup() {
 
 void loop() {
   uint32_t now = micros();
-  static uint32_t last = 0;
-  if (now - last < 500) return;
-  last = now;
+  if (now - last_micros < 1000000 / SAMPLING_RATE) return;
+  last_micros = now;
 
   x[i] = analogRead(A1);
-  float y1_val = 0, y2_val = 0;
-  for (int j = 0; j < N; j++) {
-    float input = (float)x[(i - j + B) % B] - 512.0;
-    y1_val += h[j] * input;
-    y2_val += g[j] * input;
+  float y1 = 0, y2 = 0;
+  for (int j = 0; j < QMF_N; j++) {
+    float in = (float)x[(i - j + B) % B] - 512.0;
+    y1 += h_float[j] * in;
+    y2 += g_float[j] * in;
   }
-  // Rounded scaling to PWM range (0..255).
-  // Standard DB4 filter has gain 1. Input +/- 512 maps to +/- 512.
-  // We scale to +/- 127 by dividing by 4.
-  analogWrite(LP_PIN, constrain((int)(y1_val / 4.0 + 128.5), 0, 255));
-  analogWrite(HP_PIN, constrain((int)(y2_val / 4.0 + 128.5), 0, 255));
+  // Standard DB4 gain is ~1.41 (sqrt(2)).
+  // For +/- 512 input, output can be +/- 724.
+  // We need to scale down to +/- 127 to fit 0..255.
+  // 724 / 5.7 = 127. Let's use 6.0 for safety.
+  analogWrite(LP_PIN, constrain((int)(y1 / 6.0 + 128.5), 0, 255));
+  analogWrite(HP_PIN, constrain((int)(y2 / 6.0 + 128.5), 0, 255));
   i = (i + 1) % B;
 }
