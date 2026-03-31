@@ -80,7 +80,7 @@ def test_file(ino_file):
             perf_match = re.search(r"AVG_CYCLES_PER_(?:SAMPLE|LOOP): (\d+)", stderr)
             avg_cycles = int(perf_match.group(1)) if perf_match else 0
 
-        plot_name = ino_file.replace(".ino", "")
+        plot_name = f"{ino_file.replace('.ino', '')}_{cfg['type']}"
         try:
             # fs matches sampling rate for analysis
             analysis_out = subprocess.check_output([

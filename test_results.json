@@ -10,7 +10,7 @@
       {
         "type": "noise",
         "cycles": 144,
-        "snr": 40.22
+        "snr": 39.24
       },
       {
         "type": "impulse",
@@ -35,7 +35,7 @@
       {
         "type": "noise",
         "cycles": 144,
-        "snr": 37.83
+        "snr": 39.49
       },
       {
         "type": "impulse",
@@ -60,7 +60,7 @@
       {
         "type": "noise",
         "cycles": 144,
-        "snr": 40.24
+        "snr": 39.65
       },
       {
         "type": "impulse",
@@ -85,7 +85,7 @@
       {
         "type": "noise",
         "cycles": 144,
-        "snr": 40.5
+        "snr": 40.07
       },
       {
         "type": "impulse",
@@ -110,7 +110,7 @@
       {
         "type": "noise",
         "cycles": 144,
-        "snr": 38.74
+        "snr": 40.71
       },
       {
         "type": "impulse",
@@ -135,7 +135,7 @@
       {
         "type": "noise",
         "cycles": 145,
-        "snr": 40.27
+        "snr": 39.28
       },
       {
         "type": "impulse",
@@ -160,7 +160,7 @@
       {
         "type": "noise",
         "cycles": 144,
-        "snr": 36.9
+        "snr": 40.63
       },
       {
         "type": "impulse",
@@ -185,7 +185,7 @@
       {
         "type": "noise",
         "cycles": 144,
-        "snr": 40.27
+        "snr": 37.01
       },
       {
         "type": "impulse",
@@ -210,7 +210,7 @@
       {
         "type": "noise",
         "cycles": 144,
-        "snr": 39.68
+        "snr": 40.64
       },
       {
         "type": "impulse",
@@ -235,7 +235,7 @@
       {
         "type": "noise",
         "cycles": 144,
-        "snr": 29.69
+        "snr": 30.26
       },
       {
         "type": "impulse",
