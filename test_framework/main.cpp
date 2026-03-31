@@ -15,14 +15,27 @@ int main() {
     reset_cycle_count();
     uint32_t total_iterations = 0;
 
+    uint64_t next_interrupt_cycles = 8000;
     while (std::cin.peek() != EOF && total_iterations < 2000000) {
-        add_cycles(10);
+        loop();
 
-        if (vector_0 && (get_total_cycles() % 256 < 10)) {
-             vector_0();
+        // Ensure time advances even if loop() is empty or polling
+        if (get_total_cycles() < next_interrupt_cycles) {
+            uint64_t advance = 160; // 10us
+            if (get_total_cycles() + advance > next_interrupt_cycles) {
+                advance = next_interrupt_cycles - get_total_cycles();
+            }
+            add_cycles(advance);
         }
 
-        loop();
+        // Trigger simulated 2kHz interrupt
+        if (get_total_cycles() >= next_interrupt_cycles) {
+            if (vector_0) {
+                vector_0();
+            }
+            next_interrupt_cycles += 8000;
+        }
+
         total_iterations++;
     }
 

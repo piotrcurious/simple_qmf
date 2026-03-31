@@ -30,7 +30,8 @@ void loop() {
   // 10-bit input +/- 512, Coeffs scaled by 2^15. Product +/- 2^24.
   // Total gain sqrt(2) -> +/- 2^24.5 approx 23M.
   // We want +/- 127. 2^24.5 / 2^17.5 = 127.
-  // >> 18 gives +/- 64 approx. Let's use >> 18 for safety against clipping.
+  // >> 17 gives +/- 180 (too high for 8-bit output).
+  // >> 18 gives +/- 90. This is safe and maximizes 8-bit output range.
   analogWrite(LP_PIN, constrain(((y1 + 131072L) >> 18) + 128, 0, 255));
   analogWrite(HP_PIN, constrain(((y2 + 131072L) >> 18) + 128, 0, 255));
   i = (i + 1) & MASK;

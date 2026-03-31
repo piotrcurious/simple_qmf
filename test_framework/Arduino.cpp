@@ -24,7 +24,7 @@ void digitalWrite(uint8_t pin, uint8_t val) { pinValues[pin] = val; add_cycles(2
 int digitalRead(uint8_t pin) { add_cycles(4); return pinValues[pin]; }
 
 int analogRead(uint8_t pin) {
-    add_cycles(100);
+    add_cycles(1600); // Realistic AVR analogRead (~100us)
     if (pin == A1) {
         int val;
         if (std::cin >> val) return val;
@@ -35,7 +35,7 @@ int analogRead(uint8_t pin) {
 }
 
 void analogWrite(uint8_t pin, int val) {
-    add_cycles(10);
+    add_cycles(20); // More realistic
     printf("%d %d\n", (int)pin, val);
 }
 

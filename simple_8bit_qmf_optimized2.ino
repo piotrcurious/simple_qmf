@@ -22,8 +22,8 @@ extern "C" void vector_0() {
     y2 += (int32_t)(int16_t)pgm_read_word(&g_fixed[j]) * input;
   }
 
-  analogWrite(LP_PIN, constrain(((y1 + 16384L) >> 15) + 128, 0, 255));
-  analogWrite(HP_PIN, constrain(((y2 + 16384L) >> 15) + 128, 0, 255));
+  analogWrite(LP_PIN, constrain(((y1 + 32768L) >> 16) + 128, 0, 255));
+  analogWrite(HP_PIN, constrain(((y2 + 32768L) >> 16) + 128, 0, 255));
 
   i = (i + 1) & MASK;
 }
@@ -35,5 +35,5 @@ void setup() {
 }
 
 void loop() {
-  delay(1);
+  // Empty loop to allow the simulated ISR to trigger at 2kHz
 }

@@ -28,8 +28,8 @@ void loop() {
     arduino_y2 += (int32_t)(int16_t)pgm_read_word(&g_fixed[j]) * input;
   }
 
-  analogWrite(LP_PIN, constrain(((arduino_y1 + 16384L) >> 15) + 128, 0, 255));
-  analogWrite(HP_PIN, constrain(((arduino_y2 + 16384L) >> 15) + 128, 0, 255));
+  analogWrite(LP_PIN, constrain(((arduino_y1 + 32768L) >> 16) + 128, 0, 255));
+  analogWrite(HP_PIN, constrain(((arduino_y2 + 32768L) >> 16) + 128, 0, 255));
 
   i = (i + 1) & MASK;
 }
