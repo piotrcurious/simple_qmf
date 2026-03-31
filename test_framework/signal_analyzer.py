@@ -27,18 +27,14 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=4000):
 
     start_idx = min_len // 10
     lp_s = lp[start_idx:]; hp_s = hp[start_idx:]; orig_s = orig[start_idx:]
+    lp_c = lp_s - 128; hp_c = hp_s - 128
+    if np.max(orig_s) > 300: orig_c = orig_s - 512
+    else: orig_c = (orig_s - 128) * 4.0
 
-    lp_c = lp_s - 128
-    hp_c = hp_s - 128
+    # DB4 Synthesis
+    h = np.array([0.48296291, 0.83651630, 0.22414386, -0.12940952])
+    g = np.array([-0.12940952, -0.22414386, 0.83651630, -0.48296291])
 
-    if np.max(orig_s) > 300:
-        orig_c = orig_s - 512
-    else:
-        orig_c = (orig_s - 128) * 4.0 # Normalize to +/- 512
-
-    # Synthesis Filters
-    h = np.array([0.482962913145, 0.836516303738, 0.224143868042, -0.129409522551])
-    g = np.array([-0.129409522551, -0.224143868042, 0.836516303738, -0.482962913145])
     recon_lp = np.convolve(lp_c, h[::-1], mode='same')
     recon_hp = np.convolve(hp_c, g[::-1], mode='same')
     recon_qmf = (recon_lp + recon_hp)
@@ -49,7 +45,7 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=4000):
 
     for r in [recon_sum, recon_qmf, lp_c, hp_c]:
         for scale in scales:
-            for delay in range(-25, 26):
+            for delay in range(-45, 46): # Wider delay for polyphase
                 if delay == 0: t_orig = orig_c; t_recon = r * scale
                 elif delay > 0: t_orig = orig_c[:-delay]; t_recon = r[delay:] * scale
                 else: t_orig = orig_c[-delay:]; t_recon = r[:delay] * scale
@@ -63,10 +59,7 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=4000):
 
     if plot_prefix:
         plt.figure(figsize=(16, 12))
-        plt.subplot(3, 2, 1)
-        plt.specgram(orig_c, Fs=fs, NFFT=128, noverlap=64, cmap='magma')
-        plt.title("Input Signal Spectrogram"); plt.ylabel("Hz")
-
+        plt.subplot(3, 2, 1); plt.specgram(orig_c, Fs=fs, NFFT=128, noverlap=64, cmap='magma'); plt.title(f"Input Signal ({plot_prefix})")
         plt.subplot(3, 2, 2)
         n_fft = 512; f_axis = np.fft.rfftfreq(n_fft, 1/fs)
         H_lp = []; H_hp = []
@@ -76,30 +69,17 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=4000):
             H_hp.append(np.abs(np.fft.rfft(hp_c[start:start+n_fft])) / win_orig)
         plt.plot(f_axis, 20*np.log10(np.mean(H_lp, axis=0) + 1e-6), label='LP')
         plt.plot(f_axis, 20*np.log10(np.mean(H_hp, axis=0) + 1e-6), label='HP')
-        plt.title("Transfer Function Magnitude (dB)"); plt.legend()
-
-        plt.subplot(3, 2, 3)
-        plt.specgram(lp_c, Fs=fs, NFFT=128, noverlap=64, cmap='viridis')
-        plt.title("Lowpass Band Spectrogram")
-
+        plt.title("Magnitude Response (dB)"); plt.ylim(-60, 10); plt.grid(True); plt.legend()
+        plt.subplot(3, 2, 3); plt.specgram(lp_c, Fs=fs, NFFT=128, noverlap=64, cmap='viridis'); plt.title("Lowpass Band")
+        plt.subplot(3, 2, 5); plt.specgram(hp_c, Fs=fs, NFFT=128, noverlap=64, cmap='viridis'); plt.title("Highpass Band")
         plt.subplot(3, 2, 4)
-        if best_delay == 0: vis_orig = orig_c; vis_recon = best_recon * best_scale
-        elif best_delay > 0: vis_orig = orig_c[:-best_delay]; vis_recon = best_recon[best_delay:] * best_scale
-        else: vis_orig = orig_c[-best_delay:]; vis_recon = best_recon[:best_delay] * best_scale
-        plt.plot(vis_orig[:400], label='Original', alpha=0.5)
-        plt.plot(vis_recon[:400], label='Reconstructed', alpha=0.7)
+        if best_delay == 0: v_orig = orig_c; v_recon = best_recon * best_scale
+        elif best_delay > 0: v_orig = orig_c[:-best_delay]; v_recon = best_recon[best_delay:] * best_scale
+        else: v_orig = orig_c[-best_delay:]; v_recon = best_recon[:best_delay] * best_scale
+        plt.plot(v_orig[:400], label='Original', alpha=0.5); plt.plot(v_recon[:400], label='Reconstructed', alpha=0.7)
         plt.title(f"Reconstruction (SNR: {best_snr:.1f} dB)"); plt.legend()
-
-        plt.subplot(3, 2, 5)
-        plt.specgram(hp_c, Fs=fs, NFFT=128, noverlap=64, cmap='viridis')
-        plt.title("Highpass Band Spectrogram")
-
-        plt.subplot(3, 2, 6)
-        plt.plot(vis_orig[:400] - vis_recon[:400], color='red')
-        plt.title("Residual Error (Zoom)")
-        plt.tight_layout()
-        plt.savefig(f"{plot_prefix}_analysis.png")
-        plt.close()
+        plt.subplot(3, 2, 6); plt.plot(v_orig[:400] - v_recon[:400], color='red'); plt.title("Residual Error (Zoom)")
+        plt.tight_layout(); plt.savefig(f"{plot_prefix}_analysis.png"); plt.close()
 
 if __name__ == "__main__":
     import argparse
