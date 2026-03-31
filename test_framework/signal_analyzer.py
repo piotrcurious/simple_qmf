@@ -38,12 +38,19 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=2000):
         orig_c = orig_s - 128
 
     # DB4 synthesis/analysis coefficients for theoretical comparison
-    h_db4 = np.array([0.48296291, 0.83651630, 0.22414387, -0.12940952])
-    g_db4 = np.array([-0.12940952, -0.22414387, 0.83651630, -0.48296291])
+    if "db6" in plot_prefix:
+        h_theory = np.array([0.33267055, 0.80689151, 0.45987750, -0.13501102, -0.08544127, 0.03522629])
+        g_theory = np.array([0.03522629, 0.08544127, -0.13501102, -0.45987750, 0.80689151, -0.33267055])
+    elif "db8" in plot_prefix:
+        h_theory = np.array([0.23037781, 0.71484657, 0.63088076, -0.02798376, -0.18703481, 0.03084138, 0.03288301, -0.01059740])
+        g_theory = np.array([-0.01059740, -0.03288301, 0.03084138, 0.18703481, -0.02798376, -0.63088076, 0.71484657, -0.23037781])
+    else:
+        h_theory = np.array([0.48296291, 0.83651630, 0.22414387, -0.12940952])
+        g_theory = np.array([-0.12940952, -0.22414387, 0.83651630, -0.48296291])
 
     # Reconstruction
-    recon_lp = np.convolve(lp_c, h_db4[::-1], mode='same')
-    recon_hp = np.convolve(hp_c, g_db4[::-1], mode='same')
+    recon_lp = np.convolve(lp_c, h_theory[::-1], mode='same')
+    recon_hp = np.convolve(hp_c, g_theory[::-1], mode='same')
     recon_qmf = (recon_lp + recon_hp)
     recon_sum = (lp_c + hp_c)
 
@@ -56,7 +63,9 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=2000):
                 elif delay > 0: t_orig = orig_c[:-delay]; t_recon = r[delay:] * scale
                 else: t_orig = orig_c[-delay:]; t_recon = r[:delay] * scale
                 mse = np.mean((t_orig - t_recon)**2)
-                snr = 10 * np.log10(np.mean(t_orig**2) / (mse + 1e-12))
+                p_orig = np.mean(t_orig**2)
+                if p_orig < 1e-10: snr = -100
+                else: snr = 10 * np.log10(p_orig / (mse + 1e-12))
                 if snr > best_snr:
                     best_snr = snr; best_scale = scale; best_delay = delay; best_recon = r
 
@@ -66,7 +75,9 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=2000):
         elif best_delay > 0: t_orig = orig_c[:-best_delay]; t_recon = best_recon[best_delay:] * scale
         else: t_orig = orig_c[-best_delay:]; t_recon = best_recon[:best_delay] * scale
         mse = np.mean((t_orig - t_recon)**2)
-        snr = 10 * np.log10(np.mean(t_orig**2) / (mse + 1e-12))
+        p_orig = np.mean(t_orig**2)
+        if p_orig < 1e-10: snr = -100
+        else: snr = 10 * np.log10(p_orig / (mse + 1e-12))
         if snr > best_snr:
             best_snr = snr; best_scale = scale
 
@@ -102,15 +113,15 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=2000):
         plt.plot(f_axis, ref_lp, label='LP (Measured)', linewidth=2)
         plt.plot(f_axis, ref_hp, label='HP (Measured)', linewidth=2)
 
-        # Theoretical DB4
+        # Theoretical DB
         z = np.exp(-2j * np.pi * f_axis / fs)
         h_z = np.zeros(len(f_axis), dtype=complex)
         g_z = np.zeros(len(f_axis), dtype=complex)
-        for i in range(len(h_db4)):
-            h_z += h_db4[i] * (z**i)
-            g_z += g_db4[i] * (z**i)
+        for i in range(len(h_theory)):
+            h_z += h_theory[i] * (z**i)
+            g_z += g_theory[i] * (z**i)
 
-        plt.plot(f_axis, 20*np.log10(np.abs(h_z) + eps), 'k--', label='Theoretical DB4', alpha=0.5)
+        plt.plot(f_axis, 20*np.log10(np.abs(h_z) + eps), 'k--', label='Theoretical', alpha=0.5)
         plt.plot(f_axis, 20*np.log10(np.abs(g_z) + eps), 'k--', alpha=0.5)
 
         plt.title("Magnitude Response (dB)"); plt.ylim(-60, 10); plt.grid(True); plt.legend()

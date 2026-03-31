@@ -4,8 +4,23 @@
     "tests": [
       {
         "type": "sweep",
-        "cycles": 199,
+        "cycles": 144,
         "snr": 44.86
+      },
+      {
+        "type": "noise",
+        "cycles": 144,
+        "snr": 39.24
+      },
+      {
+        "type": "impulse",
+        "cycles": 144,
+        "snr": 46.67
+      },
+      {
+        "type": "multitone",
+        "cycles": 144,
+        "snr": 38.85
       }
     ]
   },
@@ -14,8 +29,23 @@
     "tests": [
       {
         "type": "sweep",
-        "cycles": 199,
+        "cycles": 144,
         "snr": 44.86
+      },
+      {
+        "type": "noise",
+        "cycles": 144,
+        "snr": 39.49
+      },
+      {
+        "type": "impulse",
+        "cycles": 144,
+        "snr": 46.67
+      },
+      {
+        "type": "multitone",
+        "cycles": 144,
+        "snr": 38.85
       }
     ]
   },
@@ -24,8 +54,23 @@
     "tests": [
       {
         "type": "sweep",
-        "cycles": 199,
+        "cycles": 144,
         "snr": 44.58
+      },
+      {
+        "type": "noise",
+        "cycles": 144,
+        "snr": 39.65
+      },
+      {
+        "type": "impulse",
+        "cycles": 144,
+        "snr": 46.67
+      },
+      {
+        "type": "multitone",
+        "cycles": 144,
+        "snr": 39.98
       }
     ]
   },
@@ -34,8 +79,23 @@
     "tests": [
       {
         "type": "sweep",
-        "cycles": 199,
+        "cycles": 144,
         "snr": 44.58
+      },
+      {
+        "type": "noise",
+        "cycles": 144,
+        "snr": 40.07
+      },
+      {
+        "type": "impulse",
+        "cycles": 144,
+        "snr": 46.67
+      },
+      {
+        "type": "multitone",
+        "cycles": 144,
+        "snr": 39.98
       }
     ]
   },
@@ -44,8 +104,23 @@
     "tests": [
       {
         "type": "sweep",
-        "cycles": 199,
+        "cycles": 144,
         "snr": 44.58
+      },
+      {
+        "type": "noise",
+        "cycles": 144,
+        "snr": 40.71
+      },
+      {
+        "type": "impulse",
+        "cycles": 144,
+        "snr": 46.67
+      },
+      {
+        "type": "multitone",
+        "cycles": 144,
+        "snr": 39.98
       }
     ]
   },
@@ -54,8 +129,23 @@
     "tests": [
       {
         "type": "sweep",
-        "cycles": 266,
-        "snr": 4.86
+        "cycles": 145,
+        "snr": 44.58
+      },
+      {
+        "type": "noise",
+        "cycles": 145,
+        "snr": 39.28
+      },
+      {
+        "type": "impulse",
+        "cycles": 145,
+        "snr": -0.0
+      },
+      {
+        "type": "multitone",
+        "cycles": 145,
+        "snr": 39.98
       }
     ]
   },
@@ -64,8 +154,23 @@
     "tests": [
       {
         "type": "sweep",
-        "cycles": 199,
+        "cycles": 144,
         "snr": 44.58
+      },
+      {
+        "type": "noise",
+        "cycles": 144,
+        "snr": 40.63
+      },
+      {
+        "type": "impulse",
+        "cycles": 144,
+        "snr": 46.67
+      },
+      {
+        "type": "multitone",
+        "cycles": 144,
+        "snr": 39.98
       }
     ]
   },
@@ -74,8 +179,73 @@
     "tests": [
       {
         "type": "sweep",
-        "cycles": 199,
+        "cycles": 144,
         "snr": 44.58
+      },
+      {
+        "type": "noise",
+        "cycles": 144,
+        "snr": 37.01
+      },
+      {
+        "type": "impulse",
+        "cycles": 144,
+        "snr": 46.67
+      },
+      {
+        "type": "multitone",
+        "cycles": 144,
+        "snr": 39.98
+      }
+    ]
+  },
+  {
+    "file": "db6_qmf_fixed.ino",
+    "tests": [
+      {
+        "type": "sweep",
+        "cycles": 144,
+        "snr": 44.61
+      },
+      {
+        "type": "noise",
+        "cycles": 144,
+        "snr": 40.64
+      },
+      {
+        "type": "impulse",
+        "cycles": 144,
+        "snr": 41.47
+      },
+      {
+        "type": "multitone",
+        "cycles": 144,
+        "snr": 36.12
+      }
+    ]
+  },
+  {
+    "file": "db8_qmf_fixed.ino",
+    "tests": [
+      {
+        "type": "sweep",
+        "cycles": 144,
+        "snr": 44.49
+      },
+      {
+        "type": "noise",
+        "cycles": 144,
+        "snr": 30.26
+      },
+      {
+        "type": "impulse",
+        "cycles": 144,
+        "snr": 35.21
+      },
+      {
+        "type": "multitone",
+        "cycles": 144,
+        "snr": 36.62
       }
     ]
   }
