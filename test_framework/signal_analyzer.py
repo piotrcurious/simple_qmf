@@ -2,7 +2,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
-def analyze_output(filename, input_filename, plot_prefix=None, fs=4000):
+def analyze_output(filename, input_filename, plot_prefix=None, fs=2000):
     lp_data = []; hp_data = []
     with open(filename, 'r') as f:
         for line in f:
@@ -17,7 +17,7 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=4000):
     input_data = []
     with open(input_filename, 'r') as f:
         for line in f:
-            try: input_data.append(int(line.strip()))
+            try: input_data.append(float(line.strip()))
             except ValueError: continue
 
     lp = np.array(lp_data); hp = np.array(hp_data); orig = np.array(input_data)
@@ -28,24 +28,34 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=4000):
     start_idx = min_len // 10
     lp_s = lp[start_idx:]; hp_s = hp[start_idx:]; orig_s = orig[start_idx:]
     lp_c = lp_s - 128; hp_c = hp_s - 128
-    if np.max(orig_s) > 300: orig_c = orig_s - 512
-    else: orig_c = (orig_s - 128) * 4.0
 
-    # DB4 Synthesis
-    h = np.array([0.48296291, 0.83651630, 0.22414386, -0.12940952])
-    g = np.array([-0.12940952, -0.22414386, 0.83651630, -0.48296291])
+    # Check if orig is 10-bit (0-1023) or 8-bit (0-255)
+    if np.max(orig_s) > 300:
+        orig_c = orig_s - 512
+        # Standardize for comparison (map 10-bit +/- 512 to +/- 128)
+        orig_c = orig_c / 4.0
+    else:
+        orig_c = orig_s - 128
 
+    # DB4 Synthesis (Orthogonal)
+    # The reconstruction for QMF involves synthesis filters which are mirrors of analysis.
+    # For DB4: h_syn = h_analysis[::-1], g_syn = g_analysis[::-1] with some signs
+    h = np.array([0.48296291, 0.83651630, 0.22414387, -0.12940952])
+    g = np.array([-0.12940952, -0.22414387, 0.83651630, -0.48296291])
+
+    # In orthogonal QMF, recon = (lp * h_rev + hp * g_rev)
     recon_lp = np.convolve(lp_c, h[::-1], mode='same')
     recon_hp = np.convolve(hp_c, g[::-1], mode='same')
     recon_qmf = (recon_lp + recon_hp)
     recon_sum = (lp_c + hp_c)
 
     best_snr = -100; best_scale = 1.0; best_delay = 0; best_recon = recon_sum
+    # Broaden scale search to handle normalization differences
     scales = np.concatenate([np.linspace(0.1, 8.0, 100), np.linspace(-8.0, -0.1, 100)])
 
     for r in [recon_sum, recon_qmf, lp_c, hp_c]:
         for scale in scales:
-            for delay in range(-45, 46): # Wider delay for polyphase
+            for delay in range(-45, 46):
                 if delay == 0: t_orig = orig_c; t_recon = r * scale
                 elif delay > 0: t_orig = orig_c[:-delay]; t_recon = r[delay:] * scale
                 else: t_orig = orig_c[-delay:]; t_recon = r[:delay] * scale
@@ -69,7 +79,7 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=4000):
             H_hp.append(np.abs(np.fft.rfft(hp_c[start:start+n_fft])) / win_orig)
         plt.plot(f_axis, 20*np.log10(np.mean(H_lp, axis=0) + 1e-6), label='LP')
         plt.plot(f_axis, 20*np.log10(np.mean(H_hp, axis=0) + 1e-6), label='HP')
-        plt.title("Magnitude Response (dB)"); plt.ylim(-60, 10); plt.grid(True); plt.legend()
+        plt.title("Magnitude Response (dB)"); plt.ylim(-60, 15); plt.grid(True); plt.legend()
         plt.subplot(3, 2, 3); plt.specgram(lp_c, Fs=fs, NFFT=128, noverlap=64, cmap='viridis'); plt.title("Lowpass Band")
         plt.subplot(3, 2, 5); plt.specgram(hp_c, Fs=fs, NFFT=128, noverlap=64, cmap='viridis'); plt.title("Highpass Band")
         plt.subplot(3, 2, 4)
@@ -85,6 +95,6 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("output"); parser.add_argument("input")
-    parser.add_argument("--plot", required=False); parser.add_argument("--fs", type=float, default=4000)
+    parser.add_argument("--plot", required=False); parser.add_argument("--fs", type=float, default=2000)
     args = parser.parse_args()
     analyze_output(args.output, args.input, args.plot, args.fs)
