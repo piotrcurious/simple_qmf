@@ -1,0 +1,82 @@
+[
+  {
+    "file": "simple_slow_qmf.ino",
+    "tests": [
+      {
+        "type": "sweep",
+        "cycles": 199,
+        "snr": 35.88
+      }
+    ]
+  },
+  {
+    "file": "simple_optimized_qmf.ino",
+    "tests": [
+      {
+        "type": "sweep",
+        "cycles": 199,
+        "snr": 32.8
+      }
+    ]
+  },
+  {
+    "file": "simple_8bit_qmf_optimized.ino",
+    "tests": [
+      {
+        "type": "sweep",
+        "cycles": 199,
+        "snr": 32.79
+      }
+    ]
+  },
+  {
+    "file": "simple_8bit_qmf_optimized2.ino",
+    "tests": [
+      {
+        "type": "sweep",
+        "cycles": 199,
+        "snr": 32.79
+      }
+    ]
+  },
+  {
+    "file": "exact_band_split_8bit_qmf.ino",
+    "tests": [
+      {
+        "type": "sweep",
+        "cycles": 199,
+        "snr": 32.79
+      }
+    ]
+  },
+  {
+    "file": "exact_band_split_interpolated.ino",
+    "tests": [
+      {
+        "type": "sweep",
+        "cycles": 266,
+        "snr": 6.47
+      }
+    ]
+  },
+  {
+    "file": "overoptimized_8bit_qmf.ino",
+    "tests": [
+      {
+        "type": "sweep",
+        "cycles": 199,
+        "snr": 32.79
+      }
+    ]
+  },
+  {
+    "file": "polyphase_qmf_optimized.ino",
+    "tests": [
+      {
+        "type": "sweep",
+        "cycles": 199,
+        "snr": 32.79
+      }
+    ]
+  }
+]

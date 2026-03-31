@@ -17,13 +17,13 @@ This repository contains multiple implementations of **Quadrature Mirror Filters
 ![Optimized Analysis](simple_optimized_qmf_analysis.png)
 
 ### 3. `simple_8bit_qmf_optimized.ino` (High SNR 8-bit)
-- **Approach**: Optimized for 8-bit systems. Achieves significantly higher SNR (~37dB) by maximizing the use of the dynamic range within 16-bit constraints.
+- **Approach**: Optimized for 8-bit systems. Achieves high SNR (~33dB) by maximizing the use of the dynamic range within 16-bit constraints.
 - **Analysis**:
 ![8-bit Analysis](simple_8bit_qmf_optimized_analysis.png)
 
 ### 4. `exact_band_split_interpolated.ino` (Dynamic)
 - **Approach**: Real-time interpolation of filter coefficients based on a sampling rate knob.
-- **Technical Insight**: SNR is lower (~10dB) because linear interpolation between discrete coefficient sets deviates from the perfect reconstruction property of DB4 wavelets.
+- **Technical Insight**: SNR is lower (~6.5dB) because linear interpolation between discrete coefficient sets deviates from the perfect reconstruction property of DB4 wavelets.
 - **Analysis**:
 ![Interpolated Analysis](exact_band_split_interpolated_analysis.png)
 

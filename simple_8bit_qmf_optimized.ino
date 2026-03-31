@@ -32,8 +32,8 @@ void loop() {
   // Total gain sqrt(2) -> +/- 2^22.5.
   // >> 16 maps 2^22.5 to 2^6.5 (~90).
   // Safety >> 16 prevents clipping.
-  analogWrite(9, constrain(((y1 + 32768L) >> 16) + 128, 0, 255));
-  analogWrite(10, constrain(((y2 + 32768L) >> 16) + 128, 0, 255));
+  analogWrite(LP_PIN, constrain(((y1 + 32768L) >> 16) + 128, 0, 255));
+  analogWrite(HP_PIN, constrain(((y2 + 32768L) >> 16) + 128, 0, 255));
 
   i = (i + 1) & MASK;
 }
