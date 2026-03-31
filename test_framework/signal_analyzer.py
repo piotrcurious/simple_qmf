@@ -37,58 +37,95 @@ def analyze_output(filename, input_filename, plot_prefix=None, fs=2000):
     else:
         orig_c = orig_s - 128
 
-    # DB4 Synthesis (Orthogonal)
-    # The reconstruction for QMF involves synthesis filters which are mirrors of analysis.
-    # For DB4: h_syn = h_analysis[::-1], g_syn = g_analysis[::-1] with some signs
-    h = np.array([0.48296291, 0.83651630, 0.22414387, -0.12940952])
-    g = np.array([-0.12940952, -0.22414387, 0.83651630, -0.48296291])
+    # DB4 synthesis/analysis coefficients for theoretical comparison
+    h_db4 = np.array([0.48296291, 0.83651630, 0.22414387, -0.12940952])
+    g_db4 = np.array([-0.12940952, -0.22414387, 0.83651630, -0.48296291])
 
-    # In orthogonal QMF, recon = (lp * h_rev + hp * g_rev)
-    recon_lp = np.convolve(lp_c, h[::-1], mode='same')
-    recon_hp = np.convolve(hp_c, g[::-1], mode='same')
+    # Reconstruction
+    recon_lp = np.convolve(lp_c, h_db4[::-1], mode='same')
+    recon_hp = np.convolve(hp_c, g_db4[::-1], mode='same')
     recon_qmf = (recon_lp + recon_hp)
     recon_sum = (lp_c + hp_c)
 
     best_snr = -100; best_scale = 1.0; best_delay = 0; best_recon = recon_sum
-    # Broaden scale search to handle normalization differences
-    scales = np.concatenate([np.linspace(0.1, 8.0, 100), np.linspace(-8.0, -0.1, 100)])
 
     for r in [recon_sum, recon_qmf, lp_c, hp_c]:
-        for scale in scales:
+        for scale in [1.0, 0.5, 2.0, 4.0, 0.25]: # Quick check for common scales
             for delay in range(-45, 46):
                 if delay == 0: t_orig = orig_c; t_recon = r * scale
                 elif delay > 0: t_orig = orig_c[:-delay]; t_recon = r[delay:] * scale
                 else: t_orig = orig_c[-delay:]; t_recon = r[:delay] * scale
                 mse = np.mean((t_orig - t_recon)**2)
-                if mse > 1e-9: snr = 10 * np.log10(np.mean(t_orig**2) / mse)
-                else: snr = 100
+                snr = 10 * np.log10(np.mean(t_orig**2) / (mse + 1e-12))
                 if snr > best_snr:
                     best_snr = snr; best_scale = scale; best_delay = delay; best_recon = r
+
+    # Fine tune scale
+    for scale in np.linspace(best_scale*0.8, best_scale*1.2, 50):
+        if best_delay == 0: t_orig = orig_c; t_recon = best_recon * scale
+        elif best_delay > 0: t_orig = orig_c[:-best_delay]; t_recon = best_recon[best_delay:] * scale
+        else: t_orig = orig_c[-best_delay:]; t_recon = best_recon[:best_delay] * scale
+        mse = np.mean((t_orig - t_recon)**2)
+        snr = 10 * np.log10(np.mean(t_orig**2) / (mse + 1e-12))
+        if snr > best_snr:
+            best_snr = snr; best_scale = scale
 
     print(f"Best Reconstruction SNR: {best_snr:.2f} dB")
 
     if plot_prefix:
         plt.figure(figsize=(16, 12))
         plt.subplot(3, 2, 1); plt.specgram(orig_c, Fs=fs, NFFT=128, noverlap=64, cmap='magma'); plt.title(f"Input Signal ({plot_prefix})")
+
         plt.subplot(3, 2, 2)
-        n_fft = 512; f_axis = np.fft.rfftfreq(n_fft, 1/fs)
-        H_lp = []; H_hp = []
+        n_fft = 1024; f_axis = np.fft.rfftfreq(n_fft, 1/fs)
+        psd_orig = np.zeros(len(f_axis)); psd_lp = np.zeros(len(f_axis)); psd_hp = np.zeros(len(f_axis))
+        win = np.hanning(n_fft); count = 0
         for start in range(0, len(lp_c)-n_fft, n_fft//2):
-            win_orig = np.abs(np.fft.rfft(orig_c[start:start+n_fft])) + 1e-6
-            H_lp.append(np.abs(np.fft.rfft(lp_c[start:start+n_fft])) / win_orig)
-            H_hp.append(np.abs(np.fft.rfft(hp_c[start:start+n_fft])) / win_orig)
-        plt.plot(f_axis, 20*np.log10(np.mean(H_lp, axis=0) + 1e-6), label='LP')
-        plt.plot(f_axis, 20*np.log10(np.mean(H_hp, axis=0) + 1e-6), label='HP')
-        plt.title("Magnitude Response (dB)"); plt.ylim(-60, 15); plt.grid(True); plt.legend()
+            psd_orig += np.abs(np.fft.rfft(orig_c[start:start+n_fft] * win))**2
+            psd_lp += np.abs(np.fft.rfft(lp_c[start:start+n_fft] * win))**2
+            psd_hp += np.abs(np.fft.rfft(hp_c[start:start+n_fft] * win))**2
+            count += 1
+
+        # Power Transfer Function Magnitude estimation
+        # Use simple ratio of PSDs. sqrt because PSD is squared magnitude.
+        eps = 1e-12
+        mag_lp = np.sqrt(psd_lp / (psd_orig + eps))
+        mag_hp = np.sqrt(psd_hp / (psd_orig + eps))
+
+        # Scaling adjustment: the analogWrite process often scales things by some factor.
+        # We can normalize so that the LP peak matches the theoretical peak (sqrt(2) = 3dB).
+        # Actually, let's normalize LP at DC to 3.01 dB.
+        scale_adj = np.sqrt(2.0) / (mag_lp[0] + eps)
+        ref_lp = 20*np.log10(mag_lp * scale_adj + eps)
+        ref_hp = 20*np.log10(mag_hp * scale_adj + eps)
+
+        plt.plot(f_axis, ref_lp, label='LP (Measured)', linewidth=2)
+        plt.plot(f_axis, ref_hp, label='HP (Measured)', linewidth=2)
+
+        # Theoretical DB4
+        z = np.exp(-2j * np.pi * f_axis / fs)
+        h_z = np.zeros(len(f_axis), dtype=complex)
+        g_z = np.zeros(len(f_axis), dtype=complex)
+        for i in range(len(h_db4)):
+            h_z += h_db4[i] * (z**i)
+            g_z += g_db4[i] * (z**i)
+
+        plt.plot(f_axis, 20*np.log10(np.abs(h_z) + eps), 'k--', label='Theoretical DB4', alpha=0.5)
+        plt.plot(f_axis, 20*np.log10(np.abs(g_z) + eps), 'k--', alpha=0.5)
+
+        plt.title("Magnitude Response (dB)"); plt.ylim(-60, 10); plt.grid(True); plt.legend()
+
         plt.subplot(3, 2, 3); plt.specgram(lp_c, Fs=fs, NFFT=128, noverlap=64, cmap='viridis'); plt.title("Lowpass Band")
         plt.subplot(3, 2, 5); plt.specgram(hp_c, Fs=fs, NFFT=128, noverlap=64, cmap='viridis'); plt.title("Highpass Band")
+
         plt.subplot(3, 2, 4)
         if best_delay == 0: v_orig = orig_c; v_recon = best_recon * best_scale
         elif best_delay > 0: v_orig = orig_c[:-best_delay]; v_recon = best_recon[best_delay:] * best_scale
         else: v_orig = orig_c[-best_delay:]; v_recon = best_recon[:best_delay] * best_scale
         plt.plot(v_orig[:400], label='Original', alpha=0.5); plt.plot(v_recon[:400], label='Reconstructed', alpha=0.7)
         plt.title(f"Reconstruction (SNR: {best_snr:.1f} dB)"); plt.legend()
-        plt.subplot(3, 2, 6); plt.plot(v_orig[:400] - v_recon[:400], color='red'); plt.title("Residual Error (Zoom)")
+
+        plt.subplot(3, 2, 6); plt.plot(v_orig[:400] - v_recon[:400], color='red'); plt.title("Residual Error (Zoomed)")
         plt.tight_layout(); plt.savefig(f"{plot_prefix}_analysis.png"); plt.close()
 
 if __name__ == "__main__":
