@@ -58,7 +58,12 @@ void loop() {
        - (int32_t)h_curr[1] * ((int32_t)x[(i-2)&MASK] - 128)
        + (int32_t)h_curr[0] * ((int32_t)x[(i-3)&MASK] - 128);
 
-  analogWrite(9, constrain(((y1 + 32768L) >> 16) + 128, 0, 255));
-  analogWrite(10, constrain(((y2 + 32768L) >> 16) + 128, 0, 255));
+  // Standard coefficients use 2^15 scaling.
+  // 8-bit input +/- 128. Product +/- 2^22.
+  // >> 16 leaves +/- 2^6 (+/- 64).
+  // With gain sqrt(2), max output is ~90.
+  // >> 16 is safe and appropriate for 8-bit output.
+  analogWrite(LP_PIN, constrain(((y1 + 32768L) >> 16) + 128, 0, 255));
+  analogWrite(HP_PIN, constrain(((y2 + 32768L) >> 16) + 128, 0, 255));
   i = (i + 1) & MASK;
 }

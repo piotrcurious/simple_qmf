@@ -25,10 +25,11 @@ void loop() {
     y2 += g_float[j] * in;
   }
   // Standard DB4 gain is ~1.41 (sqrt(2)).
-  // For +/- 512 input, output can be +/- 724.
-  // We need to scale down to +/- 127 to fit 0..255.
-  // 724 / 5.7 = 127. Let's use 6.0 for safety.
-  analogWrite(LP_PIN, constrain((int)(y1 / 6.0 + 128.5), 0, 255));
-  analogWrite(HP_PIN, constrain((int)(y2 / 6.0 + 128.5), 0, 255));
+  // Sum of absolute values is ~1.67.
+  // For +/- 512 input, max output is +/- 856.
+  // We need to scale down to fit within 0..255 (offset 128).
+  // 856 / 8.0 = 107. 128 +/- 107 is 21 to 235. Safe.
+  analogWrite(LP_PIN, constrain((int)(y1 / 8.0 + 128.5), 0, 255));
+  analogWrite(HP_PIN, constrain((int)(y2 / 8.0 + 128.5), 0, 255));
   i = (i + 1) % B;
 }
