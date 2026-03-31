@@ -32,6 +32,13 @@ This repository contains multiple implementations of **Quadrature Mirror Filters
 - **Analysis**:
 ![Polyphase Analysis](polyphase_qmf_optimized_analysis.png)
 
+### 6. `db6_qmf_fixed.ino` & `db8_qmf_fixed.ino` (Higher Order)
+- **Approach**: Daubechies 6 (6-tap) and Daubechies 8 (8-tap) filters.
+- **Characteristics**: Improved spectral separation at the cost of slight latency increase and complexity. Still well within real-time limits on 16MHz AVR.
+- **Analysis**:
+![DB6 Analysis](db6_qmf_fixed_analysis.png)
+![DB8 Analysis](db8_qmf_fixed_analysis.png)
+
 ---
 
 ## Performance Comparison

@@ -26,18 +26,19 @@ void loop() {
   int32_t in3 = (int32_t)x[(idx - 3) & MASK] - 128;
 
   // Unrolled DB4 (Orthogonal) using pgm_read_word for maintainability
-  int32_t h0 = (int32_t)(int16_t)pgm_read_word(&h_fixed[0]);
-  int32_t h1 = (int32_t)(int16_t)pgm_read_word(&h_fixed[1]);
-  int32_t h2 = (int32_t)(int16_t)pgm_read_word(&h_fixed[2]);
-  int32_t h3 = (int32_t)(int16_t)pgm_read_word(&h_fixed[3]);
+  // Further optimization: load coefficients into local registers once
+  static int16_t rh[4], rg[4];
+  static bool first = true;
+  if (first) {
+    for(int j=0; j<4; j++) {
+      rh[j] = (int16_t)pgm_read_word(&h_fixed[j]);
+      rg[j] = (int16_t)pgm_read_word(&g_fixed[j]);
+    }
+    first = false;
+  }
 
-  int32_t g0 = (int32_t)(int16_t)pgm_read_word(&g_fixed[0]);
-  int32_t g1 = (int32_t)(int16_t)pgm_read_word(&g_fixed[1]);
-  int32_t g2 = (int32_t)(int16_t)pgm_read_word(&g_fixed[2]);
-  int32_t g3 = (int32_t)(int16_t)pgm_read_word(&g_fixed[3]);
-
-  int32_t y1 = h0 * in0 + h1 * in1 + h2 * in2 + h3 * in3;
-  int32_t y2 = g0 * in0 + g1 * in1 + g2 * in2 + g3 * in3;
+  int32_t y1 = (int32_t)rh[0] * in0 + (int32_t)rh[1] * in1 + (int32_t)rh[2] * in2 + (int32_t)rh[3] * in3;
+  int32_t y2 = (int32_t)rg[0] * in0 + (int32_t)rg[1] * in1 + (int32_t)rg[2] * in2 + (int32_t)rg[3] * in3;
 
   analogWrite(9, constrain(((y1 + 32768L) >> 16) + 128, 0, 255));
   analogWrite(10, constrain(((y2 + 32768L) >> 16) + 128, 0, 255));

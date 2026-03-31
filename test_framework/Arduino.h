@@ -29,6 +29,7 @@ void reset_cycle_count();
 uint64_t get_cycle_count();
 uint64_t get_total_cycles();
 void add_cycles(uint32_t c);
+void advance_time(uint32_t c);
 
 void pinMode(uint8_t pin, uint8_t mode);
 void digitalWrite(uint8_t pin, uint8_t val);

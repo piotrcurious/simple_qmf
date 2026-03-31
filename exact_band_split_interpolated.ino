@@ -1,6 +1,6 @@
 #include "coefficients.h"
 
-// exact_band_split_interpolated.ino - Multi-profile scaling
+// exact_band_split_interpolated.ino - Multi-profile scaling with fixed interpolation
 #define N 4
 #define R 5
 const int16_t h_set[R][N] PROGMEM = {
@@ -16,6 +16,8 @@ const uint8_t LP_PIN = 9, HP_PIN = 10;
 #define MASK (B - 1)
 int16_t x[B];
 uint8_t i = 0;
+int16_t h_curr[N];
+int16_t g_curr[N];
 uint8_t prev_knob = 255;
 uint32_t last_micros = 0;
 
@@ -23,6 +25,8 @@ void setup() {
   pinMode(LP_PIN, OUTPUT);
   pinMode(HP_PIN, OUTPUT);
   analogReadResolution(8);
+  // Initial coefficients
+  for(int j=0; j<N; j++) h_curr[j] = 0;
 }
 
 void loop() {
@@ -30,18 +34,26 @@ void loop() {
   if (now - last_micros < 1000000 / SAMPLING_RATE) return;
   last_micros = now;
 
-  uint8_t knob = analogRead(A0);
-  static int16_t h_curr[N];
-
-  if (knob != prev_knob) {
+  static uint8_t poll_counter = 0;
+  if (++poll_counter >= 100) {
+    poll_counter = 0;
+    uint8_t knob = analogRead(A0);
+    if (knob != prev_knob) {
     prev_knob = knob;
-    uint8_t r1 = knob / (256 / (R - 1));
+    uint16_t sw = 256 / (R - 1);
+    uint8_t r1 = knob / sw;
     if (r1 >= R - 1) r1 = R - 2;
     uint8_t r2 = r1 + 1;
-    uint16_t t = (knob % (256 / (R - 1))) * (256 / (256 / (R - 1)));
+    uint32_t t = (uint32_t)(knob - (r1 * sw)) * 256 / sw;
 
     for (uint8_t j = 0; j < N; j++) {
       h_curr[j] = (int16_t)(((256L - t) * (int16_t)pgm_read_word(&h_set[r1][j]) + t * (int16_t)pgm_read_word(&h_set[r2][j])) >> 8);
+    }
+      // g[n] = (-1)^n * h[N-1-n]
+      g_curr[0] = h_curr[3];
+      g_curr[1] = -h_curr[2];
+      g_curr[2] = h_curr[1];
+      g_curr[3] = -h_curr[0];
     }
   }
 
@@ -50,19 +62,9 @@ void loop() {
   for (uint8_t j = 0; j < N; j++) {
     int32_t in = (int32_t)x[(i - j) & MASK] - 128;
     y1 += (int32_t)h_curr[j] * in;
+    y2 += (int32_t)g_curr[j] * in;
   }
 
-  // QMF Mirror: g[0]=-h[3], g[1]=h[2], g[2]=-h[1], g[3]=h[0]
-  y2 = -(int32_t)h_curr[3] * ((int32_t)x[i] - 128)
-       + (int32_t)h_curr[2] * ((int32_t)x[(i-1)&MASK] - 128)
-       - (int32_t)h_curr[1] * ((int32_t)x[(i-2)&MASK] - 128)
-       + (int32_t)h_curr[0] * ((int32_t)x[(i-3)&MASK] - 128);
-
-  // Standard coefficients use 2^15 scaling.
-  // 8-bit input +/- 128. Product +/- 2^22.
-  // >> 16 leaves +/- 2^6 (+/- 64).
-  // With gain sqrt(2), max output is ~90.
-  // >> 16 is safe and appropriate for 8-bit output.
   analogWrite(LP_PIN, constrain(((y1 + 32768L) >> 16) + 128, 0, 255));
   analogWrite(HP_PIN, constrain(((y2 + 32768L) >> 16) + 128, 0, 255));
   i = (i + 1) & MASK;

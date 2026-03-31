@@ -11,7 +11,9 @@ files = [
     "exact_band_split_8bit_qmf.ino",
     "exact_band_split_interpolated.ino",
     "overoptimized_8bit_qmf.ino",
-    "polyphase_qmf_optimized.ino"
+    "polyphase_qmf_optimized.ino",
+    "db6_qmf_fixed.ino",
+    "db8_qmf_fixed.ino"
 ]
 
 def test_file(ino_file):
@@ -41,7 +43,10 @@ def test_file(ino_file):
         amp = 400 if res == 10 else 100
 
     test_configs = [
-        {"type": "sweep", "f_start": "10", "f_end": "1000", "fs": "2000", "duration": "2.0", "amplitude": "400"}
+        {"type": "sweep", "f_start": "10", "f_end": "1000", "fs": "2000", "duration": "2.0", "amplitude": "400"},
+        {"type": "noise", "fs": "2000", "duration": "1.0", "amplitude": "300"},
+        {"type": "impulse", "fs": "2000", "duration": "0.1", "amplitude": "400"},
+        {"type": "multitone", "freqs": "150,450,750,950", "fs": "2000", "duration": "1.0", "amplitude": "400"}
     ]
 
     for cfg in test_configs:
@@ -72,7 +77,7 @@ def test_file(ino_file):
             except subprocess.TimeoutExpired:
                 proc.kill(); stderr = ""
 
-            perf_match = re.search(r"AVG_CYCLES_PER_LOOP: (\d+)", stderr)
+            perf_match = re.search(r"AVG_CYCLES_PER_(?:SAMPLE|LOOP): (\d+)", stderr)
             avg_cycles = int(perf_match.group(1)) if perf_match else 0
 
         plot_name = ino_file.replace(".ino", "")
